@@ -9,20 +9,27 @@ import 'services/api_client.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiClient.initialize();
-  runApp(const HearClearApp());
+
+  // Restore the persisted session (if any) before the first frame so cold
+  // starts go straight into MainShell instead of flashing the auth screen.
+  final provider = AppProvider();
+  await provider.restoreSession();
+
+  runApp(SpectraApp(provider: provider));
 }
 
-class HearClearApp extends StatelessWidget {
-  const HearClearApp({super.key});
+class SpectraApp extends StatelessWidget {
+  final AppProvider provider;
+  const SpectraApp({super.key, required this.provider});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AppProvider(),
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: Consumer<AppProvider>(
         builder: (context, provider, _) {
           return MaterialApp(
-            title: 'HearClear',
+            title: 'SPECTRA',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.darkTheme,
             home: provider.isAuthenticated

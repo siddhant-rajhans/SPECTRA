@@ -21,8 +21,15 @@ class SoundClassifier {
   static const String _modelAsset = 'assets/models/yamnet.tflite';
   static const String _classMapAsset = 'assets/models/yamnet_class_map.csv';
 
-  /// Score below which we ignore the prediction.
+  /// Score below which we ignore the prediction. YAMNet's softmax tends to
+  /// spread probability mass across related sounds, so 0.15 is more realistic
+  /// than the textbook 0.30 for catching baby cry / dog bark / etc. in the wild.
   double confidenceThreshold;
+
+  /// How many top predictions to scan when deciding whether *anything* in the
+  /// window matches one of our 12 internal types. The top class is often
+  /// "Speech" or "Music" while the actual alert sits a few ranks down.
+  final int topK;
 
   Interpreter? _interpreter;
   List<String> _classNames = const [];
@@ -30,7 +37,13 @@ class SoundClassifier {
   bool _ready = false;
   String? _initError;
 
-  SoundClassifier({this.confidenceThreshold = 0.30});
+  /// Most recent classification snapshot — set on every classify() call,
+  /// regardless of whether it crossed the threshold or mapped to one of our
+  /// types. The UI surfaces this so users (and the dev) can see what the
+  /// classifier is actually predicting in real time.
+  ClassificationSnapshot? lastSnapshot;
+
+  SoundClassifier({this.confidenceThreshold = 0.15, this.topK = 10});
 
   bool get isReady => _ready;
   String? get initializationError => _initError;
@@ -123,30 +136,46 @@ class SoundClassifier {
     final scores = _flattenAndAverage(outputBuffer, _classNames.length);
     if (scores.isEmpty) return null;
 
-    var maxIdx = -1;
-    var maxScore = 0.0;
+    // Build a (index, score) list, sort descending by score.
+    final indexed = <_RankedScore>[];
     for (var i = 0; i < scores.length; i++) {
-      final s = scores[i];
-      if (s > maxScore) {
-        maxScore = s;
-        maxIdx = i;
-      }
+      indexed.add(_RankedScore(i, scores[i]));
     }
+    indexed.sort((a, b) => b.score.compareTo(a.score));
 
-    if (maxIdx < 0) return null;
-    final mapped = _indexToType[maxIdx];
-    if (mapped == null) {
-      // Predicted something we don't surface (e.g. "Music"); not an alert.
-      return null;
-    }
-    if (maxScore < confidenceThreshold) return null;
+    final topPicks = indexed.take(topK).toList();
 
-    return SoundClassification(
-      internalType: mapped,
-      yamnetClassIndex: maxIdx,
-      yamnetClassName: maxIdx < _classNames.length ? _classNames[maxIdx] : 'unknown',
-      confidence: maxScore,
+    // Capture a snapshot for the UI. Always populate so users can see what
+    // the model is "hearing" even when nothing crosses the threshold.
+    final topNamed = topPicks
+        .map((r) => RankedClass(
+              yamnetClassIndex: r.index,
+              yamnetClassName: r.index < _classNames.length
+                  ? _classNames[r.index]
+                  : 'idx ${r.index}',
+              confidence: r.score,
+              mappedType: _indexToType[r.index],
+            ))
+        .toList();
+    lastSnapshot = ClassificationSnapshot(
+      timestamp: DateTime.now(),
+      topPredictions: topNamed,
     );
+
+    // Walk the top predictions in order; pick the highest-ranked one that
+    // (a) maps to an internal type and (b) crosses the threshold.
+    for (final r in topPicks) {
+      final mapped = _indexToType[r.index];
+      if (mapped == null) continue;
+      if (r.score < confidenceThreshold) continue;
+      return SoundClassification(
+        internalType: mapped,
+        yamnetClassIndex: r.index,
+        yamnetClassName: r.index < _classNames.length ? _classNames[r.index] : 'unknown',
+        confidence: r.score,
+      );
+    }
+    return null;
   }
 
   /// Average per-frame scores down to a single 1-D vector. For the fixed-size
@@ -217,4 +246,42 @@ class SoundClassification {
   @override
   String toString() =>
       'SoundClassification($internalType, "$yamnetClassName" @ ${(confidence * 100).toStringAsFixed(1)}%)';
+}
+
+/// One ranked prediction from a single inference window.
+class RankedClass {
+  final int yamnetClassIndex;
+  final String yamnetClassName;
+  final double confidence;
+  /// Internal sound type if this YAMNet class maps to one (e.g. "Bark" → "dog_bark").
+  final String? mappedType;
+
+  const RankedClass({
+    required this.yamnetClassIndex,
+    required this.yamnetClassName,
+    required this.confidence,
+    required this.mappedType,
+  });
+}
+
+/// All top-K predictions from the most recent inference. Useful for the UI
+/// to show the user what the classifier is currently "hearing" even when no
+/// alert fires.
+class ClassificationSnapshot {
+  final DateTime timestamp;
+  final List<RankedClass> topPredictions;
+
+  const ClassificationSnapshot({
+    required this.timestamp,
+    required this.topPredictions,
+  });
+
+  RankedClass? get topPrediction =>
+      topPredictions.isEmpty ? null : topPredictions.first;
+}
+
+class _RankedScore {
+  final int index;
+  final double score;
+  _RankedScore(this.index, this.score);
 }

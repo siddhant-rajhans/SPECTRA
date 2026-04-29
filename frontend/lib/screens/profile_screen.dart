@@ -105,10 +105,11 @@ class ProfileScreen extends StatelessWidget {
 
         // Footer
         const Center(child: Column(children: [
-          Text('HearClear v1.0.0', style: TextStyle(fontSize: 12, color: HCColors.textSecondary)),
+          Text('SPECTRA v1.0.0', style: TextStyle(fontSize: 12, color: HCColors.textSecondary, letterSpacing: 1.5)),
           SizedBox(height: 2),
-          Text('Companion App for SPECTRA', style: TextStyle(fontSize: 11, color: HCColors.textSecondary)),
-          SizedBox(height: 2),
+          Text('Sound Processing Engine for Context-aware,', style: TextStyle(fontSize: 11, color: HCColors.textSecondary)),
+          Text('Trainable, Real-time Alerts', style: TextStyle(fontSize: 11, color: HCColors.textSecondary)),
+          SizedBox(height: 4),
           Text('Stevens Institute of Technology', style: TextStyle(fontSize: 11, color: HCColors.textSecondary)),
         ])),
         const SizedBox(height: 80),

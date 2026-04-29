@@ -27,7 +27,7 @@ class NotificationOverlay extends StatelessWidget {
         final icon = _iconMap[notification['type']] ?? '📢';
 
         return Material(
-          color: Colors.black54,
+          color: Colors.black.withValues(alpha: 0.78),
           child: Center(
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
@@ -43,17 +43,25 @@ class NotificationOverlay extends StatelessWidget {
                 );
               },
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.85,
-                constraints: const BoxConstraints(maxWidth: 340),
+                width: MediaQuery.of(context).size.width * 0.88,
+                constraints: const BoxConstraints(maxWidth: 360),
                 decoration: BoxDecoration(
-                  gradient: HCColors.cardGradient,
+                  // Solid dark surface — the previous glass gradient was washing
+                  // out over the dim scaffold. Readability beats sparkle.
+                  color: const Color(0xFF1B1F35),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: HCColors.border),
-                  boxShadow: const [
+                  border: Border.all(color: HCColors.primary.withValues(alpha: 0.6), width: 1.5),
+                  boxShadow: [
                     BoxShadow(
-                      color: Colors.black26,
+                      color: HCColors.primary.withValues(alpha: 0.35),
                       blurRadius: 32,
-                      offset: Offset(0, 8),
+                      spreadRadius: -4,
+                      offset: const Offset(0, 8),
+                    ),
+                    const BoxShadow(
+                      color: Colors.black54,
+                      blurRadius: 24,
+                      offset: Offset(0, 12),
                     ),
                   ],
                 ),
@@ -69,20 +77,22 @@ class NotificationOverlay extends StatelessWidget {
                       notification['title'] ?? '',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: HCColors.textPrimary,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     // Description
                     Text(
                       notification['description'] ?? '',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 13,
-                        color: HCColors.textSecondary,
+                        fontSize: 14,
+                        color: Color(0xFFE8EAF2),
                         height: 1.4,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     // Context reasoning

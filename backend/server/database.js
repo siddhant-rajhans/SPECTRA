@@ -305,6 +305,23 @@ function seedDefaultData() {
   db.prepare(`INSERT INTO implant_accounts (id,user_id,provider,display_name,device_model,battery_level,firmware_version,is_connected,features) VALUES (?,?,?,?,?,?,?,?,?)`)
     .run(uuidv4(), uid, 'cochlear', 'My Cochlear Account', 'Nucleus 7', 72, 'v5.2.1', 1,
       JSON.stringify(['Remote control', 'Battery monitoring', 'Program switching', 'Bluetooth streaming', 'Find my device', 'Hearing health tracking']));
+
+  // Seed test user (demo@demo.demo / demodemo)
+  const testUserId = 'test-user-demo';
+  const existing_test = db.prepare('SELECT id FROM users WHERE id = ?').get(testUserId);
+  if (!existing_test) {
+    db.prepare(`INSERT INTO users (id,name,email,avatar_initial,device_brand,device_model,hearing_loss_level) VALUES (?,?,?,?,?,?,?)`)
+      .run(testUserId, 'Demo Tester', 'demo@demo.demo', 'D', 'Other', 'Test Device', 'Moderate');
+
+    // Auth (password: demodemo)
+    const testHash = crypto.createHash('sha256').update('demodemo').digest('hex');
+    db.prepare(`INSERT INTO auth (id,email,password_hash,user_id) VALUES (?,?,?,?)`)
+      .run(uuidv4(), 'demo@demo.demo', testHash, testUserId);
+
+    // Device status
+    db.prepare(`INSERT INTO device_status (id,user_id,device_name,battery_level,is_connected,current_program) VALUES (?,?,?,?,?,?)`)
+      .run(uuidv4(), testUserId, 'Test Device', 85, 1, 'Home / Quiet');
+  }
 }
 
 // ─── Utilities ────────────────────────────────────────────────

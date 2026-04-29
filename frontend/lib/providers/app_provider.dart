@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/user.dart';
@@ -39,8 +40,10 @@ class AppProvider extends ChangeNotifier {
         'password': password,
       });
       if (response['success'] == true && response['user'] != null) {
-        _currentUser = User.fromJson(response['user'] as Map<String, dynamic>);
+        final userJson = response['user'] as Map<String, dynamic>;
+        _currentUser = User.fromJson(userJson);
         ApiClient.setUserId(_currentUser!.id);
+        await ApiClient.saveSession(userJson);
         notifyListeners();
         // Load all data after login
         await _loadAllData();
@@ -55,7 +58,11 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> signupWithCredentials(String name, String email, String password) async {
+  Future<bool> signupWithCredentials(
+    String name,
+    String email,
+    String password,
+  ) async {
     try {
       final response = await ApiClient.post('/auth/signup', {
         'name': name,
@@ -63,8 +70,10 @@ class AppProvider extends ChangeNotifier {
         'password': password,
       });
       if (response['success'] == true && response['user'] != null) {
-        _currentUser = User.fromJson(response['user'] as Map<String, dynamic>);
+        final userJson = response['user'] as Map<String, dynamic>;
+        _currentUser = User.fromJson(userJson);
         ApiClient.setUserId(_currentUser!.id);
+        await ApiClient.saveSession(userJson);
         notifyListeners();
         await _loadAllData();
         _connectWebSocket();
@@ -80,9 +89,25 @@ class AppProvider extends ChangeNotifier {
   void login(User user) {
     _currentUser = user;
     ApiClient.setUserId(user.id);
+    // Fire-and-forget persistence; the user can sign back in if it fails.
+    ApiClient.saveSession(user.toJson());
     notifyListeners();
     _loadAllData();
     _connectWebSocket();
+  }
+
+  /// Demo mode: skip auth and use a test user
+  void demoLogin() {
+    const demoUser = User(
+      id: 'demo-user-001',
+      name: 'Demo Tester',
+      email: 'demo@example.com',
+      avatarInitial: 'D',
+      hearingLossLevel: 'moderate',
+      deviceBrand: 'Other',
+      deviceModel: 'Test Device',
+    );
+    login(demoUser);
   }
 
   void logout() {
@@ -91,6 +116,27 @@ class AppProvider extends ChangeNotifier {
     _wsChannel?.sink.close();
     _wsChannel = null;
     notifyListeners();
+    // Forget the saved session so the next launch goes back to the auth screen.
+    ApiClient.clearSession();
+  }
+
+  /// Try to restore a previously persisted session. Called once at app start
+  /// after `ApiClient.initialize()`. Returns true if a session was restored.
+  Future<bool> restoreSession() async {
+    try {
+      final saved = await ApiClient.loadSession();
+      if (saved == null) return false;
+      _currentUser = User.fromJson(saved);
+      ApiClient.setUserId(_currentUser!.id);
+      notifyListeners();
+      // Best-effort background refresh; errors fall back to mock data.
+      unawaited(_loadAllData());
+      _connectWebSocket();
+      return true;
+    } catch (e) {
+      debugPrint('Failed to restore session: $e');
+      return false;
+    }
   }
 
   // ─── Initial Data Load ───────────────────────────────────────
@@ -167,7 +213,9 @@ class AppProvider extends ChangeNotifier {
     try {
       final response = await ApiClient.get('/profile/device');
       if (response['data'] != null) {
-        _deviceStatus = DeviceStatus.fromJson(response['data'] as Map<String, dynamic>);
+        _deviceStatus = DeviceStatus.fromJson(
+          response['data'] as Map<String, dynamic>,
+        );
       }
     } catch (e) {
       debugPrint('Failed to load device status: $e');
@@ -187,9 +235,12 @@ class AppProvider extends ChangeNotifier {
     try {
       final response = await ApiClient.get('/alerts');
       if (response['data'] != null) {
-        _alerts = (response['data'] as List)
-            .map((json) => SoundAlert.fromJson(json as Map<String, dynamic>))
-            .toList();
+        _alerts =
+            (response['data'] as List)
+                .map(
+                  (json) => SoundAlert.fromJson(json as Map<String, dynamic>),
+                )
+                .toList();
       }
     } catch (e) {
       debugPrint('Failed to load alerts: $e');
@@ -201,11 +252,14 @@ class AppProvider extends ChangeNotifier {
     try {
       final response = await ApiClient.post('/alerts/simulate');
       if (response['data'] != null) {
-        final alert = SoundAlert.fromJson(response['data'] as Map<String, dynamic>);
+        final alert = SoundAlert.fromJson(
+          response['data'] as Map<String, dynamic>,
+        );
         _alerts.insert(0, alert);
         showNotification(
           type: alert.type,
-          title: '${SoundTypeInfo.fromType(alert.type).icon} ${SoundTypeInfo.fromType(alert.type).label} Detected',
+          title:
+              '${SoundTypeInfo.fromType(alert.type).icon} ${SoundTypeInfo.fromType(alert.type).label} Detected',
           description: alert.contextReasoning ?? 'Sound detected',
           contextReasoning: alert.contextReasoning,
         );
@@ -222,7 +276,9 @@ class AppProvider extends ChangeNotifier {
   }
 
   // ─── Monitored Sounds ────────────────────────────────────────
-  final List<MonitoredSound> _monitoredSounds = List.from(MockData.monitoredSounds);
+  final List<MonitoredSound> _monitoredSounds = List.from(
+    MockData.monitoredSounds,
+  );
   List<MonitoredSound> get monitoredSounds => _monitoredSounds;
 
   void toggleMonitoredSound(String type) {
@@ -243,9 +299,12 @@ class AppProvider extends ChangeNotifier {
     try {
       final response = await ApiClient.get('/alerts/context-rules');
       if (response['data'] != null) {
-        _contextRules = (response['data'] as List)
-            .map((json) => ContextRule.fromJson(json as Map<String, dynamic>))
-            .toList();
+        _contextRules =
+            (response['data'] as List)
+                .map(
+                  (json) => ContextRule.fromJson(json as Map<String, dynamic>),
+                )
+                .toList();
       }
     } catch (e) {
       debugPrint('Failed to load context rules: $e');
@@ -272,15 +331,20 @@ class AppProvider extends ChangeNotifier {
   List<HearingProgram> _programs = [];
   List<HearingProgram> get programs => _programs;
 
-  HearingProgram? get activeProgram => _programs.where((p) => p.isActive).firstOrNull;
+  HearingProgram? get activeProgram =>
+      _programs.where((p) => p.isActive).firstOrNull;
 
   Future<void> _loadPrograms() async {
     try {
       final response = await ApiClient.get('/environment/programs');
       if (response['data'] != null) {
-        _programs = (response['data'] as List)
-            .map((json) => HearingProgram.fromJson(json as Map<String, dynamic>))
-            .toList();
+        _programs =
+            (response['data'] as List)
+                .map(
+                  (json) =>
+                      HearingProgram.fromJson(json as Map<String, dynamic>),
+                )
+                .toList();
       }
     } catch (e) {
       debugPrint('Failed to load programs: $e');
@@ -300,7 +364,10 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateProgramSettings(String id, ProgramSettings settings) async {
+  Future<void> updateProgramSettings(
+    String id,
+    ProgramSettings settings,
+  ) async {
     for (final p in _programs) {
       if (p.id == id) {
         p.settings.speechEnhancement = settings.speechEnhancement;
@@ -317,6 +384,47 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  // ─── ANC mode (Home screen quick presets) ────────────────────
+  String _ancMode = 'focus';
+  String get ancMode => _ancMode;
+
+  /// Apply a quick preset to the active hearing program. Three modes shown
+  /// on the Home screen map to common scenarios.
+  Future<void> setAncMode(String mode) async {
+    _ancMode = mode;
+    final active = activeProgram;
+    if (active != null) {
+      switch (mode) {
+        case 'focus':
+          active.settings.speechEnhancement = 50;
+          active.settings.noiseReduction = 80;
+          active.settings.forwardFocus = 80;
+          break;
+        case 'conversation':
+          active.settings.speechEnhancement = 90;
+          active.settings.noiseReduction = 60;
+          active.settings.forwardFocus = 80;
+          break;
+        case 'outdoor':
+          active.settings.speechEnhancement = 60;
+          active.settings.noiseReduction = 30;
+          active.settings.forwardFocus = 50;
+          break;
+      }
+      notifyListeners();
+      try {
+        await ApiClient.put(
+          '/environment/programs/${active.id}',
+          active.settings.toJson(),
+        );
+      } catch (e) {
+        debugPrint('Failed to apply ANC preset: $e');
+      }
+    } else {
+      notifyListeners();
+    }
+  }
+
   // ─── Environment ─────────────────────────────────────────────
   EnvironmentReading _environment = MockData.defaultEnvironment;
   EnvironmentReading get environment => _environment;
@@ -325,7 +433,9 @@ class AppProvider extends ChangeNotifier {
     try {
       final response = await ApiClient.get('/environment/current');
       if (response['data'] != null) {
-        _environment = EnvironmentReading.fromJson(response['data'] as Map<String, dynamic>);
+        _environment = EnvironmentReading.fromJson(
+          response['data'] as Map<String, dynamic>,
+        );
       }
     } catch (e) {
       debugPrint('Failed to load environment: $e');
@@ -351,17 +461,27 @@ class AppProvider extends ChangeNotifier {
       ]);
 
       if (results[0]['data'] != null) {
-        _pendingReviews = (results[0]['data'] as List)
-            .map((json) => IMLFeedbackItem.fromJson(json as Map<String, dynamic>))
-            .toList();
+        _pendingReviews =
+            (results[0]['data'] as List)
+                .map(
+                  (json) =>
+                      IMLFeedbackItem.fromJson(json as Map<String, dynamic>),
+                )
+                .toList();
       }
       if (results[1]['data'] != null) {
-        _reviewedItems = (results[1]['data'] as List)
-            .map((json) => IMLFeedbackItem.fromJson(json as Map<String, dynamic>))
-            .toList();
+        _reviewedItems =
+            (results[1]['data'] as List)
+                .map(
+                  (json) =>
+                      IMLFeedbackItem.fromJson(json as Map<String, dynamic>),
+                )
+                .toList();
       }
       if (results[2]['data'] != null) {
-        _imlStats = IMLStats.fromJson(results[2]['data'] as Map<String, dynamic>);
+        _imlStats = IMLStats.fromJson(
+          results[2]['data'] as Map<String, dynamic>,
+        );
       }
     } catch (e) {
       debugPrint('Failed to load IML data: $e');
@@ -370,7 +490,11 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> submitFeedback(String alertId, bool isCorrect, {String? correctedType}) async {
+  Future<void> submitFeedback(
+    String alertId,
+    bool isCorrect, {
+    String? correctedType,
+  }) async {
     // Optimistic update
     final pending = _pendingReviews.firstWhere((p) => p.id == alertId);
     _pendingReviews.removeWhere((p) => p.id == alertId);
@@ -390,8 +514,10 @@ class AppProvider extends ChangeNotifier {
     );
 
     // Update stats locally
-    final newConfirmed = isCorrect ? _imlStats.confirmed + 1 : _imlStats.confirmed;
-    final newCorrected = !isCorrect ? _imlStats.corrected + 1 : _imlStats.corrected;
+    final newConfirmed =
+        isCorrect ? _imlStats.confirmed + 1 : _imlStats.confirmed;
+    final newCorrected =
+        !isCorrect ? _imlStats.corrected + 1 : _imlStats.corrected;
     final total = newConfirmed + newCorrected;
     _imlStats = IMLStats(
       confirmed: newConfirmed,
@@ -444,11 +570,13 @@ class AppProvider extends ChangeNotifier {
 
     _speechLinesSub = _speech.lines.listen((line) {
       _partialTranscript = '';
-      addTranscriptionLine(TranscriptionLine(
-        speaker: 'You',
-        text: line.text,
-        timestamp: DateTime.now(),
-      ));
+      addTranscriptionLine(
+        TranscriptionLine(
+          speaker: 'You',
+          text: line.text,
+          timestamp: DateTime.now(),
+        ),
+      );
     });
     _speechPartialSub = _speech.partial.listen((text) {
       _partialTranscript = text;
@@ -496,7 +624,8 @@ class AppProvider extends ChangeNotifier {
 
     final started = await _speech.start();
     if (!started) {
-      _transcriptionError = 'Could not start the microphone. Check permissions.';
+      _transcriptionError =
+          'Could not start the microphone. Check permissions.';
       _isTranscribing = false;
       notifyListeners();
     }
@@ -528,16 +657,20 @@ class AppProvider extends ChangeNotifier {
       ApiClient.post('/transcribe/sessions/$_currentSessionId/lines', {
         'speaker_label': line.speaker,
         'text': line.text,
-      }).then((_) {}, onError: (e) {
-        debugPrint('Failed to save transcription line: $e');
-      });
+      }).then(
+        (_) {},
+        onError: (e) {
+          debugPrint('Failed to save transcription line: $e');
+        },
+      );
     }
   }
 
   // ─── Ambient Listening (sound classification) ────────────────
   late final SoundClassifier _classifier = SoundClassifier();
-  late final AudioListener _audioListener =
-      AudioListener(classifier: _classifier);
+  late final AudioListener _audioListener = AudioListener(
+    classifier: _classifier,
+  );
 
   bool _isListening = false;
   bool get isListening => _isListening;
@@ -548,14 +681,39 @@ class AppProvider extends ChangeNotifier {
   double _ambientAmplitude = 0.0;
   double get ambientAmplitude => _ambientAmplitude;
 
+  /// Approximate dB SPL from the live mic. Phone mics aren't calibrated, so
+  /// this is good for relative loudness / context but not for medical use.
+  /// Calibration constant chosen so that a typical conversation reads ~60 dB
+  /// and ambient quiet reads ~30-40 dB on a Pixel 9 Pro.
+  ///
+  /// Returns null when the listener is not currently capturing — the gauge
+  /// should show a hint instead of a stale number.
+  double? get ambientDbSpl {
+    if (!_isListening || _ambientAmplitude <= 0) return null;
+    final dbfs = 20 * math.log(_ambientAmplitude.clamp(1e-6, 1.0)) / math.ln10;
+    final dbSpl = dbfs + 94.0; // uncalibrated phone-mic offset
+    return dbSpl.clamp(20.0, 110.0);
+  }
+
   StreamSubscription<SoundClassification>? _classificationSub;
+  StreamSubscription<ClassificationSnapshot>? _snapshotSub;
   StreamSubscription<double>? _amplitudeSub;
   StreamSubscription<AudioListenerStatus>? _listenerStatusSub;
   bool _audioWired = false;
 
+  /// Most recent top-K predictions from YAMNet — used by the UI to show what
+  /// the classifier is currently "hearing" even when nothing crosses threshold.
+  ClassificationSnapshot? _lastSnapshot;
+  ClassificationSnapshot? get lastSnapshot => _lastSnapshot;
+  int _snapshotTick = 0;
+  int get snapshotTick => _snapshotTick;
+
   // Throttle: don't fire the same alert more than once every N seconds.
   final Map<String, DateTime> _lastAlertAt = {};
   static const _alertCooldown = Duration(seconds: 8);
+
+  // Last time we emitted an amplitude-driven notifyListeners().
+  DateTime? _lastAmpNotify;
 
   void _wireAudioStreams() {
     if (_audioWired) return;
@@ -570,9 +728,24 @@ class AppProvider extends ChangeNotifier {
       _reportClassifiedSound(c);
     });
 
+    _snapshotSub = _audioListener.snapshots.listen((snap) {
+      _lastSnapshot = snap;
+      _snapshotTick = (_snapshotTick + 1) & 0x7FFFFFFF;
+      // Notify so the diagnostic widget on the Home screen can repaint —
+      // throttled to one per ~0.5s by the inference cadence already.
+      notifyListeners();
+    });
+
     _amplitudeSub = _audioListener.amplitude.listen((a) {
       _ambientAmplitude = a;
-      // Don't notifyListeners on every audio frame — too chatty.
+      // Throttle UI repaints to ~5 Hz so the gauge / amp bar update smoothly
+      // without repainting the whole tree on every audio chunk (~50 Hz).
+      final now = DateTime.now();
+      if (_lastAmpNotify == null ||
+          now.difference(_lastAmpNotify!) > const Duration(milliseconds: 200)) {
+        _lastAmpNotify = now;
+        notifyListeners();
+      }
     });
 
     _listenerStatusSub = _audioListener.status.listen((status) {
@@ -620,7 +793,8 @@ class AppProvider extends ChangeNotifier {
     if (!_classifier.isReady) {
       final ok = await _classifier.initialize();
       if (!ok) {
-        _listenerError = _classifier.initializationError ??
+        _listenerError =
+            _classifier.initializationError ??
             'Sound classifier model failed to load. Run scripts/setup_yamnet.sh.';
         notifyListeners();
         return;
@@ -652,27 +826,33 @@ class AppProvider extends ChangeNotifier {
       // was true on the backend; we don't optimistically insert here to avoid
       // duplicates. If WS is down, fall back to inserting locally.
       if (_wsChannel == null && response['data'] != null) {
-        final alert = SoundAlert.fromJson(response['data'] as Map<String, dynamic>);
+        final alert = SoundAlert.fromJson(
+          response['data'] as Map<String, dynamic>,
+        );
         addAlert(alert);
         final info = SoundTypeInfo.fromType(alert.type);
         showNotification(
           type: alert.type,
           title: '${info.icon} ${info.label} detected',
-          description: alert.contextReasoning ?? 'Heard nearby (${(c.confidence * 100).round()}%)',
+          description:
+              alert.contextReasoning ??
+              'Heard nearby (${(c.confidence * 100).round()}%)',
         );
       }
     } catch (e) {
       debugPrint('Failed to report classified sound: $e');
       // Offline / no backend — surface a local-only alert so the user still sees feedback.
       final info = SoundTypeInfo.fromType(c.internalType);
-      addAlert(SoundAlert(
-        id: 'local-${DateTime.now().microsecondsSinceEpoch}',
-        type: c.internalType,
-        confidence: c.confidence,
-        delivered: true,
-        timestamp: DateTime.now(),
-        contextReasoning: 'Detected on-device (${c.yamnetClassName})',
-      ));
+      addAlert(
+        SoundAlert(
+          id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+          type: c.internalType,
+          confidence: c.confidence,
+          delivered: true,
+          timestamp: DateTime.now(),
+          contextReasoning: 'Detected on-device (${c.yamnetClassName})',
+        ),
+      );
       showNotification(
         type: c.internalType,
         title: '${info.icon} ${info.label} detected',
@@ -687,7 +867,9 @@ class AppProvider extends ChangeNotifier {
 
   List<ImplantProvider> get implantProviders => MockData.implantProviders;
   List<ImplantProvider> get availableProviders =>
-      implantProviders.where((p) => !_connectedImplants.any((c) => c.providerId == p.id)).toList();
+      implantProviders
+          .where((p) => !_connectedImplants.any((c) => c.providerId == p.id))
+          .toList();
 
   void connectImplant(ConnectedImplant implant) {
     _connectedImplants.add(implant);
@@ -708,17 +890,18 @@ class AppProvider extends ChangeNotifier {
       _wsChannel = ApiClient.connectWebSocket();
 
       // Subscribe to alerts
-      _wsChannel!.sink.add(jsonEncode({
-        'type': 'subscribe',
-        'channel': 'alerts',
-      }));
+      _wsChannel!.sink.add(
+        jsonEncode({'type': 'subscribe', 'channel': 'alerts'}),
+      );
 
       _wsChannel!.stream.listen(
         (data) {
           try {
             final message = jsonDecode(data.toString()) as Map<String, dynamic>;
             if (message['type'] == 'alert' && message['data'] != null) {
-              final alert = SoundAlert.fromJson(message['data'] as Map<String, dynamic>);
+              final alert = SoundAlert.fromJson(
+                message['data'] as Map<String, dynamic>,
+              );
               _alerts.insert(0, alert);
               final info = SoundTypeInfo.fromType(alert.type);
               showNotification(
@@ -727,8 +910,11 @@ class AppProvider extends ChangeNotifier {
                 description: alert.contextReasoning ?? 'Sound detected nearby',
                 contextReasoning: alert.contextReasoning,
               );
-            } else if (message['type'] == 'device_status' && message['data'] != null) {
-              _deviceStatus = DeviceStatus.fromJson(message['data'] as Map<String, dynamic>);
+            } else if (message['type'] == 'device_status' &&
+                message['data'] != null) {
+              _deviceStatus = DeviceStatus.fromJson(
+                message['data'] as Map<String, dynamic>,
+              );
               notifyListeners();
             }
           } catch (e) {
@@ -762,6 +948,7 @@ class AppProvider extends ChangeNotifier {
     _speechStatusSub?.cancel();
     _speech.dispose();
     _classificationSub?.cancel();
+    _snapshotSub?.cancel();
     _amplitudeSub?.cancel();
     _listenerStatusSub?.cancel();
     _audioListener.dispose();

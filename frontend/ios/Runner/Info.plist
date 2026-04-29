@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Hearclear</string>
+	<string>SPECTRA</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,15 +46,15 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>HearClear listens to ambient sound to detect alerts (doorbell, fire alarm, baby crying) and transcribe conversations in real time.</string>
+	<string>SPECTRA listens to ambient sound to detect alerts (doorbell, fire alarm, baby crying) and transcribe conversations in real time.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>HearClear transcribes speech locally to give you live captions of conversations around you.</string>
+	<string>SPECTRA transcribes speech locally to give you live captions of conversations around you.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>HearClear connects to your hearing implant or hearing aid over Bluetooth to read battery level and stream audio.</string>
+	<string>SPECTRA connects to your hearing implant or hearing aid over Bluetooth to read battery level and stream audio.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>HearClear pairs with your hearing implant to coordinate alerts and audio streaming.</string>
+	<string>SPECTRA pairs with your hearing implant to coordinate alerts and audio streaming.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>HearClear talks to a SPECTRA backend on your local network for real-time alert delivery.</string>
+	<string>SPECTRA talks to its backend on your local network for real-time alert delivery.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

@@ -121,26 +121,25 @@ export function shouldDeliverAlert(soundType, confidence, context = {}) {
     }
   }
 
-  // Default behavior: deliver if confidence is above threshold
-  const threshold = getConfidenceThreshold(soundType);
-  if (confidence >= threshold) {
-    return {
-      deliver: true,
-      reason: `Confidence ${(confidence * 100).toFixed(1)}% meets threshold of ${(threshold * 100).toFixed(1)}%`
-    };
-  }
-
+  // Default behavior: trust the on-device classifier. The phone has already
+  // applied its own threshold (currently 15% on YAMNet softmax) before
+  // posting; re-thresholding on the server with idealised numbers (which
+  // YAMNet's diffuse outputs rarely hit) just silently drops real detections.
+  // Only context (sleep / meeting / etc.) suppresses now.
   return {
-    deliver: false,
-    reason: `Confidence ${(confidence * 100).toFixed(1)}% below threshold of ${(threshold * 100).toFixed(1)}%`
+    deliver: true,
+    reason: `Detected at ${(confidence * 100).toFixed(1)}% confidence (on-device)`
   };
 }
 
 /**
- * Get confidence threshold for different sound types
+ * Legacy per-sound confidence thresholds. No longer applied in the default
+ * delivery path - the on-device YAMNet classifier handles this. Kept here
+ * for reference / future server-side re-classification.
  * @param {string} soundType - Type of sound
  * @returns {number} Confidence threshold 0-1
  */
+// eslint-disable-next-line no-unused-vars
 function getConfidenceThreshold(soundType) {
   const thresholds = {
     fire_alarm: 0.70,

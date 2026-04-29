@@ -12,6 +12,7 @@ import 'package:web_socket_channel/io.dart';
 /// BACKEND_HOST=<host:port>` and falls back to a sensible dev default.
 class ApiClient {
   static const String _kHostKey = 'spectra.backendHost';
+  static const String _kUserKey = 'spectra.savedUser';
   static const String _defaultHost = String.fromEnvironment(
     'BACKEND_HOST',
     defaultValue: '10.0.2.2:3001',
@@ -41,6 +42,36 @@ class ApiClient {
     _applyHost(cleaned);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kHostKey, cleaned);
+  }
+
+  /// Persist the signed-in user as JSON so we can restore the session after
+  /// a cold start. The backend doesn't issue auth tokens yet (Tier 2 work),
+  /// so this is just a local convenience — every API call still passes the
+  /// user id explicitly.
+  static Future<void> saveSession(Map<String, dynamic> userJson) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kUserKey, jsonEncode(userJson));
+  }
+
+  /// Read the previously saved user, or null if the user has logged out / never
+  /// signed in. Returned map can be passed back to `User.fromJson`.
+  static Future<Map<String, dynamic>?> loadSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kUserKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Forget the persisted user. Called on explicit logout.
+  static Future<void> clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kUserKey);
   }
 
   static String get host => _host;

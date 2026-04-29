@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -19,6 +20,8 @@ class AudioListener {
 
   final _classificationController =
       StreamController<SoundClassification>.broadcast();
+  final _snapshotController =
+      StreamController<ClassificationSnapshot>.broadcast();
   final _amplitudeController = StreamController<double>.broadcast();
   final _statusController = StreamController<AudioListenerStatus>.broadcast();
 
@@ -29,6 +32,7 @@ class AudioListener {
 
   Stream<SoundClassification> get classifications =>
       _classificationController.stream;
+  Stream<ClassificationSnapshot> get snapshots => _snapshotController.stream;
   Stream<double> get amplitude => _amplitudeController.stream;
   Stream<AudioListenerStatus> get status => _statusController.stream;
 
@@ -140,7 +144,8 @@ class AudioListener {
     }
 
     if (sampleCount > 0) {
-      final rms = (sumSq / sampleCount);
+      // Real RMS — square root of mean square. Bounded to [0, 1].
+      final rms = math.sqrt(sumSq / sampleCount);
       _amplitudeController.add(rms);
     }
 
@@ -154,6 +159,12 @@ class AudioListener {
         start + SoundClassifier.windowSamples,
       );
       final result = classifier.classify(window);
+      // Always push the latest snapshot (top-K predictions, even if nothing
+      // crossed threshold) so the UI can show what the model is hearing.
+      final snap = classifier.lastSnapshot;
+      if (snap != null) {
+        _snapshotController.add(snap);
+      }
       if (result != null) {
         _classificationController.add(result);
       }
@@ -171,6 +182,7 @@ class AudioListener {
   Future<void> dispose() async {
     await stop();
     await _classificationController.close();
+    await _snapshotController.close();
     await _amplitudeController.close();
     await _statusController.close();
   }

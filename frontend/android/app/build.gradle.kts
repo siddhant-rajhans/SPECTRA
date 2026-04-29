@@ -31,9 +31,22 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Signing with the debug keys for now, so `flutter run --release`
+            // works on the test Pixel. Replace with a real keystore before any
+            // Play Store / OTA distribution.
             signingConfig = signingConfigs.getByName("debug")
+
+            // Disable R8 shrinking for the cochlear implant test build. TFLite
+            // ships optional GPU/NNAPI delegate classes that R8 can't always
+            // resolve; once we ship a real release we'll re-enable this with
+            // the proguard-rules.pro below in place.
+            isMinifyEnabled = false
+            isShrinkResources = false
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../services/sound_classifier.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/waveform_visualizer.dart';
@@ -13,6 +14,11 @@ class HomeScreen extends StatelessWidget {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         final device = provider.deviceStatus;
+        
+        // Provide safe defaults if device is null or incomplete
+        final deviceName = device?.name ?? 'Hearing Device';
+        final deviceConnected = device?.connected ?? true;
+        final deviceBattery = device?.battery ?? 85;
         
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -28,11 +34,11 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'HearClear',
+                    'SPECTRA',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
+                      letterSpacing: 3,
                       color: HCColors.textPrimary,
                     ),
                   ),
@@ -52,9 +58,9 @@ class HomeScreen extends StatelessWidget {
                   Expanded(
                     child: _DeviceItem(
                       icon: '🦻',
-                      name: device.name,
-                      status: device.connected ? 'Connected' : 'Disconnected',
-                      battery: device.battery,
+                      name: deviceName,
+                      status: deviceConnected ? 'Connected' : 'Disconnected',
+                      battery: deviceBattery,
                       gradient: HCColors.primaryGradient,
                     ),
                   ),
@@ -135,9 +141,24 @@ class HomeScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      const _ModeIcon('🎯', 'Focus', true),
-                      const _ModeIcon('🗣️', 'Conversation', false),
-                      const _ModeIcon('🏃‍♂️', 'Outdoor', false),
+                      _ModeIcon(
+                        icon: '🎯',
+                        label: 'Focus',
+                        isActive: provider.ancMode == 'focus',
+                        onTap: () => provider.setAncMode('focus'),
+                      ),
+                      _ModeIcon(
+                        icon: '🗣️',
+                        label: 'Conversation',
+                        isActive: provider.ancMode == 'conversation',
+                        onTap: () => provider.setAncMode('conversation'),
+                      ),
+                      _ModeIcon(
+                        icon: '🏃‍♂️',
+                        label: 'Outdoor',
+                        isActive: provider.ancMode == 'outdoor',
+                        onTap: () => provider.setAncMode('outdoor'),
+                      ),
                     ],
                   ),
                 ],
@@ -145,45 +166,10 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Real-time Transcription
+            // Real-time Transcription preview — pulls from the active session.
             const _SectionTitle(title: 'Real-time Transcription'),
             const SizedBox(height: 12),
-            GlassCard(
-              padding: EdgeInsets.zero,
-              child: Stack(
-                children: [
-                  // Background Waveform
-                  const Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.15,
-                      child: WaveformVisualizer(isActive: true),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Transcribing Live... [6:15 PM]', style: TextStyle(color: HCColors.textTertiary, fontSize: 11)),
-                        SizedBox(height: 12),
-                        Text(
-                          '...great conversation today. Yes, I can\nhear you clearly now.',
-                          style: TextStyle(fontSize: 14, height: 1.5, color: HCColors.textPrimary),
-                        ),
-                        Text(
-                          '(User: "It\'s amazing!")',
-                          style: TextStyle(fontSize: 14, height: 1.5, color: HCColors.accent),
-                        ),
-                        Text(
-                          'The noise is significantly reduced. This\napp makes it easier to engage.',
-                          style: TextStyle(fontSize: 14, height: 1.5, color: HCColors.textPrimary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _LiveTranscriptionCard(provider: provider),
             const SizedBox(height: 24),
 
             // Quick Scene & Volume
@@ -357,25 +343,149 @@ class _ModeIcon extends StatelessWidget {
   final String icon;
   final String label;
   final bool isActive;
+  final VoidCallback? onTap;
 
-  const _ModeIcon(this.icon, this.label, this.isActive);
+  const _ModeIcon({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isActive ? HCColors.primary.withValues(alpha: 0.2) : HCColors.glassBg,
-            shape: BoxShape.circle,
-            border: isActive ? Border.all(color: HCColors.primary) : null,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(40),
+        splashColor: HCColors.primary.withValues(alpha: 0.2),
+        highlightColor: HCColors.primary.withValues(alpha: 0.1),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isActive ? HCColors.primary.withValues(alpha: 0.25) : HCColors.glassBg,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isActive ? HCColors.primary : Colors.transparent,
+                    width: 1.5,
+                  ),
+                  boxShadow: isActive
+                      ? [
+                          BoxShadow(
+                            color: HCColors.primary.withValues(alpha: 0.4),
+                            blurRadius: 14,
+                            spreadRadius: -2,
+                          )
+                        ]
+                      : null,
+                ),
+                child: Text(icon, style: const TextStyle(fontSize: 20)),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isActive ? HCColors.primaryLight : HCColors.textSecondary,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          child: Text(icon, style: const TextStyle(fontSize: 20)),
         ),
-        const SizedBox(height: 8),
-        Text(label, style: TextStyle(fontSize: 11, color: isActive ? HCColors.primaryLight : HCColors.textSecondary, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
-      ],
+      ),
+    );
+  }
+}
+
+class _LiveTranscriptionCard extends StatelessWidget {
+  final AppProvider provider;
+  const _LiveTranscriptionCard({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = provider.transcriptLines;
+    final partial = provider.partialTranscript;
+    final isTranscribing = provider.isTranscribing;
+    final hasContent = lines.isNotEmpty || partial.isNotEmpty;
+
+    final lastLines = lines.length > 3 ? lines.sublist(lines.length - 3) : lines;
+
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      child: Stack(children: [
+        Positioned.fill(
+          child: Opacity(
+            opacity: isTranscribing ? 0.18 : 0.05,
+            child: WaveformVisualizer(isActive: isTranscribing),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Container(
+                  width: 6, height: 6,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isTranscribing ? HCColors.accent : HCColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isTranscribing ? 'Live captions' : 'Idle',
+                  style: const TextStyle(color: HCColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              if (!hasContent && !isTranscribing)
+                GestureDetector(
+                  onTap: () => provider.setActiveTab(2),
+                  child: const Text(
+                    'Tap the Transcribe tab to caption a conversation in real time.',
+                    style: TextStyle(fontSize: 13, color: HCColors.textSecondary, height: 1.4),
+                  ),
+                )
+              else if (!hasContent && isTranscribing)
+                const Text(
+                  'Listening — start speaking…',
+                  style: TextStyle(fontSize: 14, color: HCColors.textSecondary, height: 1.5, fontStyle: FontStyle.italic),
+                )
+              else ...[
+                for (final line in lastLines)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      line.text,
+                      style: const TextStyle(fontSize: 14, height: 1.5, color: HCColors.textPrimary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (partial.isNotEmpty)
+                  Text(
+                    partial,
+                    style: TextStyle(
+                      fontSize: 14, height: 1.5,
+                      color: HCColors.accent.withValues(alpha: 0.85),
+                      fontStyle: FontStyle.italic,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -479,6 +589,136 @@ class _SoundAwarenessCard extends StatelessWidget {
               ),
             ),
           ],
+          if (listening) _ListenerDiagnostic(provider: provider),
+        ],
+      ),
+    );
+  }
+}
+
+/// Live diagnostic panel: shows ambient amplitude, the top YAMNet predictions
+/// for the most recent inference window, and which classes map to one of our
+/// 12 internal alert types. Lets the user (and the dev) see immediately
+/// whether the classifier is hearing anything at all.
+class _ListenerDiagnostic extends StatelessWidget {
+  final AppProvider provider;
+  const _ListenerDiagnostic({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final snap = provider.lastSnapshot;
+    final amp = provider.ambientAmplitude;
+    final ampPct = (amp * 12).clamp(0.0, 1.0);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'WHAT IT HEARS',
+                style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5, color: HCColors.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                width: 6, height: 6,
+                decoration: const BoxDecoration(color: HCColors.success, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 4),
+              const Text('mic live', style: TextStyle(fontSize: 10, color: HCColors.success, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Amplitude bar
+          Stack(children: [
+            Container(
+              height: 6,
+              decoration: BoxDecoration(color: HCColors.bgCard, borderRadius: BorderRadius.circular(3)),
+            ),
+            FractionallySizedBox(
+              widthFactor: ampPct,
+              child: Container(
+                height: 6,
+                decoration: BoxDecoration(gradient: HCColors.accentGradient, borderRadius: BorderRadius.circular(3)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          if (snap == null)
+            const Text(
+              'Waiting for first inference...',
+              style: TextStyle(fontSize: 11, color: HCColors.textSecondary),
+            )
+          else
+            ...snap.topPredictions.take(4).map((r) => _PredictionRow(rank: r)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PredictionRow extends StatelessWidget {
+  final RankedClass rank;
+  const _PredictionRow({required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    final isMapped = rank.mappedType != null;
+    final pct = (rank.confidence * 100).clamp(0.0, 100.0);
+    final barColor = isMapped ? HCColors.accent : HCColors.textTertiary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 5,
+            child: Text(
+              rank.yamnetClassName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: isMapped ? HCColors.textPrimary : HCColors.textSecondary,
+                fontWeight: isMapped ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Stack(children: [
+              Container(
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(color: HCColors.bgCard, borderRadius: BorderRadius.circular(2)),
+              ),
+              FractionallySizedBox(
+                widthFactor: rank.confidence.clamp(0.0, 1.0),
+                child: Container(
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  decoration: BoxDecoration(color: barColor, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 36,
+            child: Text(
+              '${pct.toStringAsFixed(0)}%',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w700,
+                color: isMapped ? HCColors.accent : HCColors.textTertiary,
+              ),
+            ),
+          ),
         ],
       ),
     );

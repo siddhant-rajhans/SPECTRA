@@ -118,9 +118,10 @@ class _AuthScreenState extends State<AuthScreen>
 
       if (!success && mounted) {
         setState(() {
-          _error = _isSignUp
-              ? 'Failed to create account. Try a different email.'
-              : 'Invalid email or password.';
+          _error =
+              _isSignUp
+                  ? 'Failed to create account. Try a different email.'
+                  : 'Invalid email or password.';
           _loading = false;
         });
       }
@@ -151,21 +152,18 @@ class _AuthScreenState extends State<AuthScreen>
               ),
               const SizedBox(height: 12),
               const Text(
-                'HearClear',
+                'SPECTRA',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 32,
                   fontWeight: FontWeight.w800,
                   color: HCColors.textPrimary,
-                  letterSpacing: -0.5,
+                  letterSpacing: 4,
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
                 'Context-Aware Hearing Companion',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: HCColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 13, color: HCColors.textSecondary, letterSpacing: 0.5),
               ),
               const SizedBox(height: 28),
 
@@ -219,7 +217,10 @@ class _AuthScreenState extends State<AuthScreen>
                   ),
                   child: Text(
                     _error!,
-                    style: const TextStyle(color: HCColors.danger, fontSize: 13),
+                    style: const TextStyle(
+                      color: HCColors.danger,
+                      fontSize: 13,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -239,22 +240,23 @@ class _AuthScreenState extends State<AuthScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                  child:
+                      _loading
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : Text(
+                            _isSignUp ? 'Create Account' : 'Sign In',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        )
-                      : Text(
-                          _isSignUp ? 'Create Account' : 'Sign In',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                 ),
               ),
 
@@ -283,17 +285,38 @@ class _AuthScreenState extends State<AuthScreen>
               ),
 
               const SizedBox(height: 16),
+              // Demo Mode button
+              TextButton(
+                onPressed: () {
+                  context.read<AppProvider>().demoLogin();
+                },
+                style: TextButton.styleFrom(foregroundColor: HCColors.warning),
+                child: const Text(
+                  '🧪 Demo Mode (skip auth)',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ServerSettingsScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const ServerSettingsScreen(),
+                    ),
                   ).then((_) => setState(() {}));
                 },
-                icon: const Icon(Icons.dns_rounded, size: 16, color: HCColors.textSecondary),
+                icon: const Icon(
+                  Icons.dns_rounded,
+                  size: 16,
+                  color: HCColors.textSecondary,
+                ),
                 label: Text(
                   'Server: ${ApiClient.host}',
-                  style: const TextStyle(fontSize: 11, color: HCColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: HCColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -380,7 +403,7 @@ class _AuthScreenState extends State<AuthScreen>
             'ReSound',
             'Starkey',
             'Widex',
-            'Other'
+            'Other',
           ],
           onChanged: (v) => setState(() => _deviceBrand = v ?? ''),
         ),
@@ -465,16 +488,23 @@ class _AuthScreenState extends State<AuthScreen>
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
-              hint: Text(hint,
-                  style:
-                      const TextStyle(color: HCColors.textSecondary, fontSize: 14)),
+              hint: Text(
+                hint,
+                style: const TextStyle(
+                  color: HCColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
               isExpanded: true,
               dropdownColor: HCColors.bgCard,
               style: const TextStyle(color: HCColors.textPrimary, fontSize: 14),
-              items: items
-                  .map((item) =>
-                      DropdownMenuItem(value: item, child: Text(item)))
-                  .toList(),
+              items:
+                  items
+                      .map(
+                        (item) =>
+                            DropdownMenuItem(value: item, child: Text(item)),
+                      )
+                      .toList(),
               onChanged: _loading ? null : onChanged,
             ),
           ),
