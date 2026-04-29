@@ -1,29 +1,71 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
 
 /// Central API client for the HearClear backend.
-/// Handles REST calls and WebSocket connections.
+///
+/// REST + WebSocket. The backend host is persisted in SharedPreferences so
+/// users can point the app at a different machine on a LAN (or a hosted
+/// server) without rebuilding. Compile-time default comes from `--dart-define
+/// BACKEND_HOST=<host:port>` and falls back to a sensible dev default.
 class ApiClient {
-  // Default to localhost for iOS simulator.
-  // For Android emulator use 10.0.2.2:3001
-  // For physical device use your LAN IP (e.g., 192.168.1.x:3001)
-  static String _baseUrl = 'http://localhost:3001/api';
-  static String _wsUrl = 'ws://localhost:3001/ws';
+  static const String _kHostKey = 'spectra.backendHost';
+  static const String _defaultHost = String.fromEnvironment(
+    'BACKEND_HOST',
+    defaultValue: '10.0.2.2:3001',
+  );
+
+  static String _host = _defaultHost;
+  static String _baseUrl = 'http://$_defaultHost/api';
+  static String _wsUrl = 'ws://$_defaultHost/ws';
   static String? _userId;
 
-  /// Configure the base URL (call before any API calls).
-  /// [host] should be like '192.168.1.5:3001' or 'localhost:3001'
-  static void configure({required String host}) {
-    _baseUrl = 'http://$host/api';
-    _wsUrl = 'ws://$host/ws';
+  /// Load the persisted host (if any) from SharedPreferences. Call once on
+  /// app boot, before the first API request.
+  static Future<void> initialize() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kHostKey);
+    if (saved != null && saved.isNotEmpty) {
+      _applyHost(saved);
+    } else {
+      _applyHost(_defaultHost);
+    }
   }
+
+  /// Update the backend host at runtime and persist it. Accepts forms like
+  /// `192.168.1.42:3001`, `localhost:3001`, or `api.example.com`.
+  static Future<void> setHost(String host) async {
+    final cleaned = _normalizeHost(host);
+    _applyHost(cleaned);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kHostKey, cleaned);
+  }
+
+  static String get host => _host;
+  static String get baseUrl => _baseUrl;
+  static String get wsUrl => _wsUrl;
+
+  /// Backwards-compatible alias for older callers.
+  static void configure({required String host}) => _applyHost(_normalizeHost(host));
 
   static void setUserId(String id) => _userId = id;
   static String? get userId => _userId;
-  static String get baseUrl => _baseUrl;
+
+  static String _normalizeHost(String input) {
+    var s = input.trim();
+    s = s.replaceFirst(RegExp(r'^https?://'), '');
+    s = s.replaceFirst(RegExp(r'^wss?://'), '');
+    s = s.replaceAll(RegExp(r'/+$'), '');
+    return s;
+  }
+
+  static void _applyHost(String host) {
+    _host = host;
+    _baseUrl = 'http://$host/api';
+    _wsUrl = 'ws://$host/ws';
+  }
 
   // ─── HTTP Helpers ─────────────────────────────────────────────
 
@@ -68,6 +110,19 @@ class ApiClient {
       headers: _headers(),
     ).timeout(const Duration(seconds: 10));
     return _handleResponse(response);
+  }
+
+  /// Quick reachability probe used by the settings screen to confirm the
+  /// configured host actually serves the backend.
+  static Future<bool> ping() async {
+    try {
+      final response = await http
+          .get(Uri.parse('http://$_host/health'))
+          .timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ─── WebSocket ────────────────────────────────────────────────

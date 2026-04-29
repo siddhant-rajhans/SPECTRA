@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -8,8 +9,12 @@ import '../models/context_rule.dart';
 import '../models/hearing_program.dart';
 import '../models/iml_feedback.dart';
 import '../models/transcription.dart';
+import '../services/alert_fx.dart';
 import '../services/api_client.dart';
+import '../services/audio_listener.dart';
 import '../services/mock_data.dart';
+import '../services/sound_classifier.dart';
+import '../services/speech_service.dart';
 
 /// Central state management for HearClear using ChangeNotifier + Provider.
 /// Now wired to the real backend API with fallback to mock data.
@@ -121,6 +126,14 @@ class AppProvider extends ChangeNotifier {
   Map<String, String>? _notification;
   Map<String, String>? get notification => _notification;
 
+  /// Monotonically increasing counter — each new alert bumps it. The
+  /// screen-flash overlay watches this to know when to fire a burst.
+  int _alertCounter = 0;
+  int get alertCounter => _alertCounter;
+
+  String? _lastAlertSoundType;
+  String? get lastAlertSoundType => _lastAlertSoundType;
+
   void showNotification({
     required String type,
     required String title,
@@ -133,7 +146,12 @@ class AppProvider extends ChangeNotifier {
       'description': description,
       if (contextReasoning != null) 'contextReasoning': contextReasoning,
     };
+    _lastAlertSoundType = type;
+    _alertCounter += 1;
     notifyListeners();
+
+    // Fire-and-forget; haptics shouldn't block the UI.
+    AlertFx.instance.trigger(priorityForSoundType(type));
   }
 
   void hideNotification() {
@@ -406,11 +424,65 @@ class AppProvider extends ChangeNotifier {
   List<TranscriptionLine> _transcriptLines = [];
   List<TranscriptionLine> get transcriptLines => _transcriptLines;
 
+  String _partialTranscript = '';
+  String get partialTranscript => _partialTranscript;
+
+  String? _transcriptionError;
+  String? get transcriptionError => _transcriptionError;
+
   String? _currentSessionId;
 
+  final SpeechService _speech = SpeechService();
+  StreamSubscription<TranscriptLine>? _speechLinesSub;
+  StreamSubscription<String>? _speechPartialSub;
+  StreamSubscription<SpeechStatus>? _speechStatusSub;
+  bool _speechWired = false;
+
+  void _wireSpeechStreams() {
+    if (_speechWired) return;
+    _speechWired = true;
+
+    _speechLinesSub = _speech.lines.listen((line) {
+      _partialTranscript = '';
+      addTranscriptionLine(TranscriptionLine(
+        speaker: 'You',
+        text: line.text,
+        timestamp: DateTime.now(),
+      ));
+    });
+    _speechPartialSub = _speech.partial.listen((text) {
+      _partialTranscript = text;
+      notifyListeners();
+    });
+    _speechStatusSub = _speech.status.listen((status) {
+      if (status == SpeechStatus.permissionDenied) {
+        _transcriptionError =
+            'Microphone permission was denied. Enable it in Settings to transcribe.';
+        _isTranscribing = false;
+        notifyListeners();
+      } else if (status == SpeechStatus.error) {
+        _transcriptionError =
+            'Speech recognition hit an error. Tap Start to try again.';
+        notifyListeners();
+      }
+    });
+  }
+
   Future<void> startTranscription() async {
+    _wireSpeechStreams();
+    _transcriptionError = null;
+
+    final ready = await _speech.initialize();
+    if (!ready) {
+      _transcriptionError =
+          'On-device speech recognition is unavailable on this device.';
+      notifyListeners();
+      return;
+    }
+
     _isTranscribing = true;
     _transcriptLines = [];
+    _partialTranscript = '';
     notifyListeners();
 
     try {
@@ -422,13 +494,20 @@ class AppProvider extends ChangeNotifier {
       debugPrint('Failed to start transcription session: $e');
     }
 
-    // Simulate incoming transcription lines (will be replaced with speech_to_text)
-    _simulateTranscription();
+    final started = await _speech.start();
+    if (!started) {
+      _transcriptionError = 'Could not start the microphone. Check permissions.';
+      _isTranscribing = false;
+      notifyListeners();
+    }
   }
 
   Future<void> stopTranscription() async {
     _isTranscribing = false;
+    _partialTranscript = '';
     notifyListeners();
+
+    await _speech.stop();
 
     if (_currentSessionId != null) {
       try {
@@ -449,16 +528,156 @@ class AppProvider extends ChangeNotifier {
       ApiClient.post('/transcribe/sessions/$_currentSessionId/lines', {
         'speaker_label': line.speaker,
         'text': line.text,
-      }).catchError((e) => debugPrint('Failed to save transcription line: $e'));
+      }).then((_) {}, onError: (e) {
+        debugPrint('Failed to save transcription line: $e');
+      });
     }
   }
 
-  void _simulateTranscription() async {
-    final lines = MockData.sampleTranscriptLines;
-    for (int i = 0; i < lines.length; i++) {
-      await Future.delayed(const Duration(seconds: 2));
-      if (!_isTranscribing) return;
-      addTranscriptionLine(lines[i]);
+  // ─── Ambient Listening (sound classification) ────────────────
+  late final SoundClassifier _classifier = SoundClassifier();
+  late final AudioListener _audioListener =
+      AudioListener(classifier: _classifier);
+
+  bool _isListening = false;
+  bool get isListening => _isListening;
+
+  String? _listenerError;
+  String? get listenerError => _listenerError;
+
+  double _ambientAmplitude = 0.0;
+  double get ambientAmplitude => _ambientAmplitude;
+
+  StreamSubscription<SoundClassification>? _classificationSub;
+  StreamSubscription<double>? _amplitudeSub;
+  StreamSubscription<AudioListenerStatus>? _listenerStatusSub;
+  bool _audioWired = false;
+
+  // Throttle: don't fire the same alert more than once every N seconds.
+  final Map<String, DateTime> _lastAlertAt = {};
+  static const _alertCooldown = Duration(seconds: 8);
+
+  void _wireAudioStreams() {
+    if (_audioWired) return;
+    _audioWired = true;
+
+    _classificationSub = _audioListener.classifications.listen((c) {
+      if (!_isMonitored(c.internalType)) return;
+      final last = _lastAlertAt[c.internalType];
+      final now = DateTime.now();
+      if (last != null && now.difference(last) < _alertCooldown) return;
+      _lastAlertAt[c.internalType] = now;
+      _reportClassifiedSound(c);
+    });
+
+    _amplitudeSub = _audioListener.amplitude.listen((a) {
+      _ambientAmplitude = a;
+      // Don't notifyListeners on every audio frame — too chatty.
+    });
+
+    _listenerStatusSub = _audioListener.status.listen((status) {
+      switch (status) {
+        case AudioListenerStatus.permissionDenied:
+          _listenerError =
+              'Microphone permission was denied. Enable it in Settings to detect sounds.';
+          _isListening = false;
+          notifyListeners();
+          break;
+        case AudioListenerStatus.modelMissing:
+          _listenerError =
+              'Sound classifier model not found. Run scripts/setup_yamnet.sh and rebuild.';
+          _isListening = false;
+          notifyListeners();
+          break;
+        case AudioListenerStatus.error:
+          _listenerError = 'Audio capture failed. Tap Listen to try again.';
+          notifyListeners();
+          break;
+        case AudioListenerStatus.stopped:
+          // Routine stop — don't surface as error.
+          break;
+        case AudioListenerStatus.listening:
+          _listenerError = null;
+          notifyListeners();
+          break;
+      }
+    });
+  }
+
+  bool _isMonitored(String soundType) {
+    for (final s in _monitoredSounds) {
+      if (s.type == soundType) return s.isEnabled;
+    }
+    // Unknown type — default to monitoring it.
+    return true;
+  }
+
+  Future<void> startListening() async {
+    _wireAudioStreams();
+    _listenerError = null;
+
+    // Ensure classifier loaded — emit a clear error if not.
+    if (!_classifier.isReady) {
+      final ok = await _classifier.initialize();
+      if (!ok) {
+        _listenerError = _classifier.initializationError ??
+            'Sound classifier model failed to load. Run scripts/setup_yamnet.sh.';
+        notifyListeners();
+        return;
+      }
+    }
+
+    final started = await _audioListener.start();
+    if (started) {
+      _isListening = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> stopListening() async {
+    await _audioListener.stop();
+    _isListening = false;
+    _ambientAmplitude = 0;
+    notifyListeners();
+  }
+
+  Future<void> _reportClassifiedSound(SoundClassification c) async {
+    debugPrint('Detected ${c.toString()}');
+    try {
+      final response = await ApiClient.post('/alerts', {
+        'soundType': c.internalType,
+        'confidence': c.confidence,
+      });
+      // The WebSocket will deliver the alert back to us if `decision.deliver`
+      // was true on the backend; we don't optimistically insert here to avoid
+      // duplicates. If WS is down, fall back to inserting locally.
+      if (_wsChannel == null && response['data'] != null) {
+        final alert = SoundAlert.fromJson(response['data'] as Map<String, dynamic>);
+        addAlert(alert);
+        final info = SoundTypeInfo.fromType(alert.type);
+        showNotification(
+          type: alert.type,
+          title: '${info.icon} ${info.label} detected',
+          description: alert.contextReasoning ?? 'Heard nearby (${(c.confidence * 100).round()}%)',
+        );
+      }
+    } catch (e) {
+      debugPrint('Failed to report classified sound: $e');
+      // Offline / no backend — surface a local-only alert so the user still sees feedback.
+      final info = SoundTypeInfo.fromType(c.internalType);
+      addAlert(SoundAlert(
+        id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+        type: c.internalType,
+        confidence: c.confidence,
+        delivered: true,
+        timestamp: DateTime.now(),
+        contextReasoning: 'Detected on-device (${c.yamnetClassName})',
+      ));
+      showNotification(
+        type: c.internalType,
+        title: '${info.icon} ${info.label} detected',
+        description: 'Heard nearby (${(c.confidence * 100).round()}%)',
+      );
     }
   }
 
@@ -538,6 +757,15 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _wsChannel?.sink.close();
+    _speechLinesSub?.cancel();
+    _speechPartialSub?.cancel();
+    _speechStatusSub?.cancel();
+    _speech.dispose();
+    _classificationSub?.cancel();
+    _amplitudeSub?.cancel();
+    _listenerStatusSub?.cancel();
+    _audioListener.dispose();
+    _classifier.dispose();
     super.dispose();
   }
 }

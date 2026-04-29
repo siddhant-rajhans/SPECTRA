@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../models/user.dart';
+import '../services/api_client.dart';
 import '../theme/app_theme.dart';
+import 'server_settings_screen.dart';
 
 /// Authentication screen with Sign In / Sign Up toggle.
 /// Matches the React AuthScreen component.
@@ -279,6 +280,21 @@ class _AuthScreenState extends State<AuthScreen>
               const Text(
                 'CS545B · Bridging the Gap',
                 style: TextStyle(fontSize: 11, color: HCColors.textSecondary),
+              ),
+
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ServerSettingsScreen()),
+                  ).then((_) => setState(() {}));
+                },
+                icon: const Icon(Icons.dns_rounded, size: 16, color: HCColors.textSecondary),
+                label: Text(
+                  'Server: ${ApiClient.host}',
+                  style: const TextStyle(fontSize: 11, color: HCColors.textSecondary),
+                ),
               ),
             ],
           ),

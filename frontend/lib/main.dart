@@ -4,8 +4,11 @@ import 'theme/app_theme.dart';
 import 'providers/app_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_shell.dart';
+import 'services/api_client.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiClient.initialize();
   runApp(const HearClearApp());
 }
 

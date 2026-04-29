@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/screen_header.dart';
+import 'server_settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final VoidCallback? onNavigateToImplants;
@@ -78,6 +80,26 @@ class ProfileScreen extends StatelessWidget {
         _settingsGroup('ML & Personalization', [
           _item('Classifier Model (SPECTRA)', '${stats.confirmed} samples'),
           _item('Hearing Health Score', '85/100'),
+        ]),
+        const SizedBox(height: 20),
+
+        _settingsGroup('Connection', [
+          GlassCard(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ServerSettingsScreen()),
+            ),
+            borderRadius: BorderRadius.circular(10),
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('🌐 Backend Server', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(
+                ApiClient.host,
+                style: const TextStyle(fontSize: 11, color: HCColors.textSecondary),
+              ),
+            ]),
+          ),
         ]),
         const SizedBox(height: 32),
 

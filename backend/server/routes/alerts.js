@@ -8,6 +8,7 @@ import {
   getActiveRules
 } from '../services/contextEngine.js';
 import { classifySound, simulateAmbientListening } from '../services/soundClassifier.js';
+import { broadcastAlert } from '../websocket.js';
 
 const router = express.Router();
 const DEFAULT_USER_ID = 'default-user';
@@ -218,6 +219,10 @@ router.post(
 
       const alert = db.prepare('SELECT * FROM sound_alerts WHERE id = ?').get(alertId);
 
+      if (decision.deliver) {
+        broadcastAlert(alert);
+      }
+
       res.status(201).json({
         success: true,
         data: alert,
@@ -347,6 +352,10 @@ router.post(
       );
 
       const alert = db.prepare('SELECT * FROM sound_alerts WHERE id = ?').get(alertId);
+
+      if (decision.deliver) {
+        broadcastAlert(alert);
+      }
 
       res.status(201).json({
         success: true,

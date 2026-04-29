@@ -6,6 +6,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { initialize as initializeDb, closeDb } from './database.js';
 import { handleNotFound, globalErrorHandler, asyncHandler } from './middleware/errorHandler.js';
+import {
+  registerClient,
+  unregisterClient,
+  broadcastAlert,
+  broadcastDeviceStatus,
+  broadcastContextUpdate
+} from './websocket.js';
 
 // Import routes
 import alertsRouter from './routes/alerts.js';
@@ -94,13 +101,11 @@ const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
 // WebSocket connection handling
-const connectedClients = new Map();
-
 wss.on('connection', (ws, req) => {
   const clientId = req.headers['sec-websocket-key'];
   console.log(`WebSocket client connected: ${clientId}`);
 
-  connectedClients.set(clientId, ws);
+  registerClient(clientId, ws);
 
   // Send welcome message
   ws.send(
@@ -151,7 +156,7 @@ wss.on('connection', (ws, req) => {
   // Handle client disconnect
   ws.on('close', () => {
     console.log(`WebSocket client disconnected: ${clientId}`);
-    connectedClients.delete(clientId);
+    unregisterClient(clientId);
   });
 
   // Handle errors
@@ -160,67 +165,9 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-/**
- * Broadcast alert to all connected WebSocket clients
- * Called when a new alert is created that should be delivered
- */
-export function broadcastAlert(alert) {
-  const message = JSON.stringify({
-    type: 'alert',
-    data: alert,
-    timestamp: new Date().toISOString()
-  });
-
-  let broadcastCount = 0;
-  connectedClients.forEach((client) => {
-    if (client.readyState === 1 && client.isSubscribedToAlerts) {
-      // readyState 1 = OPEN
-      client.send(message, (error) => {
-        if (error) {
-          console.error('Error broadcasting alert:', error);
-        } else {
-          broadcastCount++;
-        }
-      });
-    }
-  });
-
-  console.log(`Alert broadcast to ${broadcastCount} clients`);
-}
-
-/**
- * Broadcast device status update
- */
-export function broadcastDeviceStatus(deviceStatus) {
-  const message = JSON.stringify({
-    type: 'device_status',
-    data: deviceStatus,
-    timestamp: new Date().toISOString()
-  });
-
-  connectedClients.forEach((client) => {
-    if (client.readyState === 1) {
-      client.send(message);
-    }
-  });
-}
-
-/**
- * Broadcast real-time context update
- */
-export function broadcastContextUpdate(context) {
-  const message = JSON.stringify({
-    type: 'context_update',
-    data: context,
-    timestamp: new Date().toISOString()
-  });
-
-  connectedClients.forEach((client) => {
-    if (client.readyState === 1) {
-      client.send(message);
-    }
-  });
-}
+// Broadcast helpers live in ./websocket.js — re-export so any historic consumer
+// of these from server/index.js keeps working.
+export { broadcastAlert, broadcastDeviceStatus, broadcastContextUpdate };
 
 // Graceful shutdown
 const signals = ['SIGTERM', 'SIGINT'];

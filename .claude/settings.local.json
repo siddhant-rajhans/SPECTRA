@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check E:/research/spectra/backend/server/index.js)",
+      "Bash(node --check E:/research/spectra/backend/server/routes/alerts.js)",
+      "PowerShell(& 'C:\\\\flutter\\\\bin\\\\flutter.bat' --version 2>&1)"
+    ]
+  }
+}

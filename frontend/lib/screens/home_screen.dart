@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
-import '../models/sound_alert.dart';
 import '../widgets/waveform_visualizer.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -72,6 +71,12 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Sound Awareness — start/stop ambient classifier.
+            const _SectionTitle(title: 'Sound Awareness'),
+            const SizedBox(height: 12),
+            _SoundAwarenessCard(provider: provider),
             const SizedBox(height: 24),
 
             // Active Noise Cancellation
@@ -371,6 +376,111 @@ class _ModeIcon extends StatelessWidget {
         const SizedBox(height: 8),
         Text(label, style: TextStyle(fontSize: 11, color: isActive ? HCColors.primaryLight : HCColors.textSecondary, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
       ],
+    );
+  }
+}
+
+class _SoundAwarenessCard extends StatelessWidget {
+  final AppProvider provider;
+  const _SoundAwarenessCard({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final listening = provider.isListening;
+    final error = provider.listenerError;
+
+    return GlassCard(
+      isGlowing: listening,
+      glowColor: listening ? HCColors.accent : HCColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: listening ? HCColors.accentGradient : HCColors.primaryGradient,
+                ),
+                alignment: Alignment.center,
+                child: Text(listening ? '👂' : '🔈', style: const TextStyle(fontSize: 22)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      listening ? 'Listening for sounds' : 'Tap Listen to start',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      listening
+                          ? 'Detecting alarms, doorbells, sirens, baby cries, and more'
+                          : 'Phone uses your mic + on-device AI to flag important sounds',
+                      style: const TextStyle(fontSize: 11, color: HCColors.textSecondary, height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                if (listening) {
+                  provider.stopListening();
+                } else {
+                  provider.startListening();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: listening ? HCColors.danger : HCColors.accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              icon: Icon(
+                listening ? Icons.stop_rounded : Icons.hearing_rounded,
+                size: 18,
+              ),
+              label: Text(
+                listening ? 'Stop listening' : 'Listen',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: HCColors.danger.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: HCColors.danger.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: HCColors.danger, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      error,
+                      style: const TextStyle(fontSize: 11, color: HCColors.danger, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

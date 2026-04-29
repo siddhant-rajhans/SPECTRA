@@ -16,6 +16,8 @@ class TranscribeScreen extends StatelessWidget {
       builder: (context, provider, _) {
         final isRecording = provider.isTranscribing;
         final lines = provider.transcriptLines;
+        final partial = provider.partialTranscript;
+        final error = provider.transcriptionError;
 
         return ListView(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16), children: [
           // Header
@@ -50,8 +52,8 @@ class TranscribeScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             padding: const EdgeInsets.all(16),
             child: SizedBox(
-              height: 180,
-              child: lines.isEmpty
+              height: 220,
+              child: (lines.isEmpty && partial.isEmpty)
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -62,15 +64,50 @@ class TranscribeScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            isRecording ? 'Waiting for audio...' : 'Tap Start to begin transcribing',
+                            isRecording ? 'Listening — start speaking…' : 'Tap Start to begin transcribing',
                             style: const TextStyle(fontSize: 14, color: HCColors.textSecondary),
                           ),
                         ],
                       ),
                     )
                   : ListView.builder(
-                      itemCount: lines.length,
+                      reverse: false,
+                      itemCount: lines.length + (partial.isNotEmpty ? 1 : 0),
                       itemBuilder: (context, i) {
+                        if (i == lines.length && partial.isNotEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  margin: const EdgeInsets.only(top: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: HCColors.accent.withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'live',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: HCColors.accent),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    partial,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: HCColors.textPrimary.withValues(alpha: 0.7),
+                                      fontStyle: FontStyle.italic,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
                         final line = lines[i];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -103,6 +140,29 @@ class TranscribeScreen extends StatelessWidget {
                     ),
             ),
           ),
+          if (error != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: HCColors.danger.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: HCColors.danger.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: HCColors.danger, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      error,
+                      style: const TextStyle(fontSize: 12, color: HCColors.danger, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
 
           // Info bar

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Device/implant connection status.
 class DeviceStatus {
   final String name;
@@ -60,17 +62,16 @@ class ConnectedImplant {
   factory ConnectedImplant.fromJson(Map<String, dynamic> json) {
     List<String> parseFeatures(dynamic f) {
       if (f is List) return f.cast<String>();
-      if (f is String) {
+      if (f is String && f.isNotEmpty) {
         try {
-          final parsed = List<String>.from(
-            (f.startsWith('[') ? List.from(json is List ? json : []) : [f])
-          );
-          return parsed;
+          final decoded = jsonDecode(f);
+          if (decoded is List) return List<String>.from(decoded.map((e) => e.toString()));
+          return [f];
         } catch (_) {
-          return [];
+          return [f];
         }
       }
-      return [];
+      return const [];
     }
 
     return ConnectedImplant(

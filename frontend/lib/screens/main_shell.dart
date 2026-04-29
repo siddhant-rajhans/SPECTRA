@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/notification_overlay.dart';
+import '../widgets/screen_flash_overlay.dart';
 import 'home_screen.dart';
 import 'alerts_screen.dart';
 import 'transcribe_screen.dart';
@@ -111,6 +112,14 @@ class _MainShellState extends State<MainShell> {
                     ),
                   ),
                 ),
+
+              // Screen flash burst — fires on every new alert, regardless of
+              // whether the user has the notification dialog open.
+              ScreenFlashOverlay(
+                alertCounter: provider.alertCounter,
+                alertSoundType: provider.lastAlertSoundType,
+                alertColor: resolveFlashColor(provider.lastAlertSoundType),
+              ),
 
               // Notification overlay
               if (provider.notification != null) const NotificationOverlay(),
