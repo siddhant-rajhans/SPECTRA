@@ -96,28 +96,41 @@ class _AuthScreenState extends State<AuthScreen>
 
     setState(() => _loading = true);
 
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 600));
-
     if (!mounted) return;
 
-    // Mock login / signup
-    final user = User(
-      id: 'user-${DateTime.now().millisecondsSinceEpoch}',
-      name: _isSignUp ? _nameController.text : 'Maruthi',
-      email: _emailController.text,
-      avatarInitial: _isSignUp
-          ? _nameController.text.isNotEmpty
-              ? _nameController.text[0].toUpperCase()
-              : 'U'
-          : 'M',
-      hearingLossLevel: _isSignUp ? _hearingLossLevel : 'Profound',
-      deviceBrand: _isSignUp ? _deviceBrand : 'Cochlear',
-      deviceModel: _isSignUp ? _deviceModelController.text : 'Nucleus 7',
-    );
+    final provider = context.read<AppProvider>();
 
-    context.read<AppProvider>().login(user);
-    setState(() => _loading = false);
+    try {
+      bool success;
+      if (_isSignUp) {
+        success = await provider.signupWithCredentials(
+          _nameController.text,
+          _emailController.text,
+          _passwordController.text,
+        );
+      } else {
+        success = await provider.loginWithCredentials(
+          _emailController.text,
+          _passwordController.text,
+        );
+      }
+
+      if (!success && mounted) {
+        setState(() {
+          _error = _isSignUp
+              ? 'Failed to create account. Try a different email.'
+              : 'Invalid email or password.';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Connection error. Is the backend running?';
+          _loading = false;
+        });
+      }
+    }
   }
 
   @override

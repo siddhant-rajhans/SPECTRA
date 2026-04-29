@@ -1,0 +1,28 @@
+{
+  "name": "hearclear",
+  "version": "1.0.0",
+  "description": "Context-aware hearing aid companion app backend",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "nodemon server/index.js",
+    "start": "node server/index.js",
+    "build": "echo 'Build command placeholder'",
+    "test": "echo 'Test command placeholder'"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "sql.js": "^1.14.1",
+    "uuid": "^9.0.1",
+    "ws": "^8.15.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -13,6 +13,23 @@ class ContextRule {
     required this.icon,
     required this.isActive,
   });
+
+  factory ContextRule.fromJson(Map<String, dynamic> json) {
+    // Map condition_type to icon
+    const iconMap = {
+      'calendar_event': '📞',
+      'time_range': '😴',
+      'location': '🌳',
+    };
+    final condType = json['condition_type']?.toString() ?? '';
+    return ContextRule(
+      id: json['id']?.toString() ?? '',
+      title: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      icon: iconMap[condType] ?? '⚙️',
+      isActive: json['is_active'] == 1 || json['is_active'] == true,
+    );
+  }
 }
 
 /// A monitored sound type with toggle state.

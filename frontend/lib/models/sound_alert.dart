@@ -21,6 +21,31 @@ class SoundAlert {
     this.timeOfDay,
     required this.timestamp,
   });
+
+  factory SoundAlert.fromJson(Map<String, dynamic> json) {
+    return SoundAlert(
+      id: json['id']?.toString() ?? '',
+      type: json['sound_type']?.toString() ?? json['type']?.toString() ?? 'unknown',
+      confidence: (json['confidence'] ?? 0.0).toDouble(),
+      delivered: json['was_delivered'] == 1 || json['was_delivered'] == true || json['delivered'] == true,
+      contextReasoning: json['delivery_reason']?.toString() ?? json['contextReasoning']?.toString(),
+      location: json['context_location']?.toString() ?? json['location']?.toString(),
+      timeOfDay: json['context_time_of_day']?.toString() ?? json['timeOfDay']?.toString(),
+      timestamp: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'sound_type': type,
+    'confidence': confidence,
+    'was_delivered': delivered ? 1 : 0,
+    'delivery_reason': contextReasoning,
+    'context_location': location,
+    'context_time_of_day': timeOfDay,
+  };
 }
 
 /// Maps sound types to their display metadata.

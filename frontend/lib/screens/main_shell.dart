@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -38,7 +39,7 @@ class _MainShellState extends State<MainShell> {
                       center: Alignment(-0.8, -0.6),
                       radius: 1.5,
                       colors: [
-                        Color(0x1A6C5CE7),
+                        Color(0x2A6C5CE7), // Enhanced background glow
                         Colors.transparent,
                       ],
                     ),
@@ -47,6 +48,7 @@ class _MainShellState extends State<MainShell> {
               ),
               // Main content
               SafeArea(
+                bottom: false,
                 child: _showImplantConnect
                     ? ImplantConnectScreen(
                         onBack: () => setState(() => _showImplantConnect = false),
@@ -66,35 +68,54 @@ class _MainShellState extends State<MainShell> {
                         ],
                       ),
               ),
-              // Notification overlay
-              if (provider.notification != null) const NotificationOverlay(),
-            ],
-          ),
-          bottomNavigationBar: _showImplantConnect
-              ? null
-              : Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xF20F0F1A),
-                    border: Border(top: BorderSide(color: HCColors.border, width: 0.5)),
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: SizedBox(
-                      height: 60,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _TabItem(icon: '🏠', label: 'Home', index: 0, active: provider.activeTab),
-                          _TabItem(icon: '🔔', label: 'Alerts', index: 1, active: provider.activeTab),
-                          _TabItem(icon: '📝', label: 'Transcribe', index: 2, active: provider.activeTab),
-                          _TabItem(icon: '🤖', label: 'Train AI', index: 3, active: provider.activeTab),
-                          _TabItem(icon: '⚙️', label: 'Settings', index: 4, active: provider.activeTab),
-                          _TabItem(icon: '👤', label: 'Profile', index: 5, active: provider.activeTab),
-                        ],
+              
+              // Floating Bottom Navigation Bar
+              if (!_showImplantConnect)
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: MediaQuery.of(context).padding.bottom + 10,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: HCColors.bgCard.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: HCColors.glassBorder,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _TabItem(icon: '🏠', label: 'Home', index: 0, active: provider.activeTab),
+                            _TabItem(icon: '🔔', label: 'Alerts', index: 1, active: provider.activeTab),
+                            _TabItem(icon: '📝', label: 'Transcribe', index: 2, active: provider.activeTab),
+                            _TabItem(icon: '🤖', label: 'Train AI', index: 3, active: provider.activeTab),
+                            _TabItem(icon: '⚙️', label: 'Settings', index: 4, active: provider.activeTab),
+                            _TabItem(icon: '👤', label: 'Profile', index: 5, active: provider.activeTab),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
+
+              // Notification overlay
+              if (provider.notification != null) const NotificationOverlay(),
+            ],
+          ),
         );
       },
     );
@@ -121,37 +142,35 @@ class _TabItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => context.read<AppProvider>().setActiveTab(index),
       child: SizedBox(
-        width: 58,
+        width: 50,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Active indicator dot
-            AnimatedContainer(
+            AnimatedScale(
+              scale: isActive ? 1.25 : 1.0,
               duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOut,
-              width: isActive ? 4 : 0,
-              height: isActive ? 4 : 0,
-              margin: const EdgeInsets.only(bottom: 4),
-              decoration: BoxDecoration(
-                color: HCColors.primary,
-                shape: BoxShape.circle,
-                boxShadow: isActive
-                    ? [BoxShadow(color: HCColors.primary.withValues(alpha: 0.5), blurRadius: 6)]
-                    : [],
+              curve: Curves.easeOutBack,
+              child: Container(
+                padding: EdgeInsets.only(bottom: isActive ? 2 : 0),
+                decoration: isActive ? BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: HCColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    )
+                  ]
+                ) : null,
+                child: Text(icon, style: const TextStyle(fontSize: 22)),
               ),
             ),
-            AnimatedScale(
-              scale: isActive ? 1.2 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: Text(icon, style: const TextStyle(fontSize: 20)),
-            ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 9,
-                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                color: isActive ? HCColors.primary : HCColors.textSecondary,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                color: isActive ? HCColors.primaryLight : HCColors.textTertiary,
                 letterSpacing: 0.2,
               ),
               overflow: TextOverflow.ellipsis,

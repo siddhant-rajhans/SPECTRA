@@ -13,6 +13,24 @@ class DeviceStatus {
     this.currentProgram,
     this.lastLocation,
   });
+
+  factory DeviceStatus.fromJson(Map<String, dynamic> json) {
+    return DeviceStatus(
+      name: json['device_name']?.toString() ?? json['name']?.toString() ?? 'Unknown Device',
+      connected: json['is_connected'] == 1 || json['is_connected'] == true,
+      battery: (json['battery_level'] ?? json['battery'] ?? 0) as int,
+      currentProgram: json['current_program']?.toString(),
+      lastLocation: json['last_seen_location']?.toString() ?? json['lastLocation']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'device_name': name,
+    'is_connected': connected ? 1 : 0,
+    'battery_level': battery,
+    'current_program': currentProgram,
+    'last_seen_location': lastLocation,
+  };
 }
 
 /// Connected implant device with provider info.
@@ -38,6 +56,35 @@ class ConnectedImplant {
     this.lastSynced,
     this.features = const [],
   });
+
+  factory ConnectedImplant.fromJson(Map<String, dynamic> json) {
+    List<String> parseFeatures(dynamic f) {
+      if (f is List) return f.cast<String>();
+      if (f is String) {
+        try {
+          final parsed = List<String>.from(
+            (f.startsWith('[') ? List.from(json is List ? json : []) : [f])
+          );
+          return parsed;
+        } catch (_) {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    return ConnectedImplant(
+      id: json['id']?.toString() ?? '',
+      providerId: json['provider']?.toString() ?? '',
+      providerName: json['provider']?.toString() ?? '',
+      displayName: json['display_name']?.toString() ?? '',
+      deviceModel: json['device_model']?.toString(),
+      battery: (json['battery_level'] ?? 0) as int,
+      firmwareVersion: json['firmware_version']?.toString(),
+      lastSynced: json['last_synced_at'] != null ? DateTime.tryParse(json['last_synced_at'].toString()) : null,
+      features: parseFeatures(json['features']),
+    );
+  }
 }
 
 /// Implant provider (Cochlear, Phonak, etc.)
