@@ -14,12 +14,12 @@ class HomeScreen extends StatelessWidget {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         final device = provider.deviceStatus;
-        
+
         // Provide safe defaults if device is null or incomplete
         final deviceName = device?.name ?? 'Hearing Device';
         final deviceConnected = device?.connected ?? true;
         final deviceBattery = device?.battery ?? 85;
-        
+
         return ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
@@ -29,7 +29,9 @@ class HomeScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ShaderMask(
-                    shaderCallback: (bounds) => HCColors.primaryGradient.createShader(bounds),
+                    shaderCallback:
+                        (bounds) =>
+                            HCColors.primaryGradient.createShader(bounds),
                     child: const Text('🦻', style: TextStyle(fontSize: 28)),
                   ),
                   const SizedBox(width: 8),
@@ -48,7 +50,10 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // Connected Devices
-            const _SectionTitle(title: 'Connected Devices', actionText: 'Manage'),
+            const _SectionTitle(
+              title: 'Connected Devices',
+              actionText: 'Manage',
+            ),
             const SizedBox(height: 12),
             GlassCard(
               isGlowing: true,
@@ -104,7 +109,7 @@ class HomeScreen extends StatelessWidget {
                                 color: HCColors.primary.withValues(alpha: 0.4),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
-                              )
+                              ),
                             ],
                           ),
                           child: Stack(
@@ -120,21 +125,33 @@ class HomeScreen extends StatelessWidget {
                                     shape: BoxShape.circle,
                                   ),
                                 ),
-                              )
+                              ),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: HCColors.primary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: HCColors.primaryLight.withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: HCColors.primaryLight.withValues(alpha: 0.3),
+                          ),
                         ),
-                        child: const Text('ON', style: TextStyle(color: HCColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 12)),
-                      )
+                        child: const Text(
+                          'ON',
+                          style: TextStyle(
+                            color: HCColors.primaryLight,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -185,8 +202,18 @@ class HomeScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: const [
-                            Text('Quick Scene', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                            Icon(Icons.arrow_forward_ios, size: 12, color: HCColors.textSecondary),
+                            Text(
+                              'Quick Scene',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 12,
+                              color: HCColors.textSecondary,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -213,8 +240,20 @@ class HomeScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: const [
-                            Text('Volume', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                            Text('75%', style: TextStyle(fontSize: 12, color: HCColors.textSecondary)),
+                            Text(
+                              'Volume',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '75%',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: HCColors.textSecondary,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -222,7 +261,9 @@ class HomeScreen extends StatelessWidget {
                           height: 24,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(colors: [HCColors.danger, HCColors.warning]),
+                            gradient: const LinearGradient(
+                              colors: [HCColors.danger, HCColors.warning],
+                            ),
                           ),
                           child: Stack(
                             children: [
@@ -232,9 +273,12 @@ class HomeScreen extends StatelessWidget {
                                 bottom: 2,
                                 child: Container(
                                   width: 20,
-                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              )
+                              ),
                             ],
                           ),
                         ),
@@ -263,7 +307,14 @@ class _SectionTitle extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: HCColors.textPrimary)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: HCColors.textPrimary,
+          ),
+        ),
         if (actionText != null)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -271,7 +322,13 @@ class _SectionTitle extends StatelessWidget {
               color: HCColors.glassBg,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(actionText!, style: const TextStyle(fontSize: 11, color: HCColors.textSecondary)),
+            child: Text(
+              actionText!,
+              style: const TextStyle(
+                fontSize: 11,
+                color: HCColors.textSecondary,
+              ),
+            ),
           ),
       ],
     );
@@ -285,7 +342,13 @@ class _DeviceItem extends StatelessWidget {
   final int battery;
   final Gradient gradient;
 
-  const _DeviceItem({required this.icon, required this.name, required this.status, required this.battery, required this.gradient});
+  const _DeviceItem({
+    required this.icon,
+    required this.name,
+    required this.status,
+    required this.battery,
+    required this.gradient,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -301,8 +364,12 @@ class _DeviceItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               gradient: gradient,
               boxShadow: [
-                BoxShadow(color: gradient.colors.first.withValues(alpha: 0.4), blurRadius: 10, offset: const Offset(0, 4))
-              ]
+                BoxShadow(
+                  color: gradient.colors.first.withValues(alpha: 0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             alignment: Alignment.center,
             child: Text(icon, style: const TextStyle(fontSize: 20)),
@@ -312,27 +379,53 @@ class _DeviceItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13), overflow: TextOverflow.ellipsis),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 2),
-                Text(status, style: const TextStyle(color: HCColors.textSecondary, fontSize: 11)),
+                Text(
+                  status,
+                  style: const TextStyle(
+                    color: HCColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Container(
-                      width: 16, height: 8,
+                      width: 16,
+                      height: 8,
                       decoration: BoxDecoration(
                         color: HCColors.success,
                         borderRadius: BorderRadius.circular(4),
-                        boxShadow: [BoxShadow(color: HCColors.success.withValues(alpha: 0.4), blurRadius: 4)]
+                        boxShadow: [
+                          BoxShadow(
+                            color: HCColors.success.withValues(alpha: 0.4),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text('$battery%', style: const TextStyle(color: HCColors.success, fontSize: 10, fontWeight: FontWeight.w600)),
+                    Text(
+                      '$battery%',
+                      style: const TextStyle(
+                        color: HCColors.success,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -369,21 +462,25 @@ class _ModeIcon extends StatelessWidget {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isActive ? HCColors.primary.withValues(alpha: 0.25) : HCColors.glassBg,
+                  color:
+                      isActive
+                          ? HCColors.primary.withValues(alpha: 0.25)
+                          : HCColors.glassBg,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isActive ? HCColors.primary : Colors.transparent,
                     width: 1.5,
                   ),
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                            color: HCColors.primary.withValues(alpha: 0.4),
-                            blurRadius: 14,
-                            spreadRadius: -2,
-                          )
-                        ]
-                      : null,
+                  boxShadow:
+                      isActive
+                          ? [
+                            BoxShadow(
+                              color: HCColors.primary.withValues(alpha: 0.4),
+                              blurRadius: 14,
+                              spreadRadius: -2,
+                            ),
+                          ]
+                          : null,
                 ),
                 child: Text(icon, style: const TextStyle(fontSize: 20)),
               ),
@@ -392,7 +489,8 @@ class _ModeIcon extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 11,
-                  color: isActive ? HCColors.primaryLight : HCColors.textSecondary,
+                  color:
+                      isActive ? HCColors.primaryLight : HCColors.textSecondary,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -415,77 +513,105 @@ class _LiveTranscriptionCard extends StatelessWidget {
     final isTranscribing = provider.isTranscribing;
     final hasContent = lines.isNotEmpty || partial.isNotEmpty;
 
-    final lastLines = lines.length > 3 ? lines.sublist(lines.length - 3) : lines;
+    final lastLines =
+        lines.length > 3 ? lines.sublist(lines.length - 3) : lines;
 
     return GlassCard(
       padding: EdgeInsets.zero,
-      child: Stack(children: [
-        Positioned.fill(
-          child: Opacity(
-            opacity: isTranscribing ? 0.18 : 0.05,
-            child: WaveformVisualizer(isActive: isTranscribing),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Opacity(
+              opacity: isTranscribing ? 0.18 : 0.05,
+              child: WaveformVisualizer(isActive: isTranscribing),
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  width: 6, height: 6,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isTranscribing ? HCColors.accent : HCColors.textTertiary,
-                  ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color:
+                            isTranscribing
+                                ? HCColors.accent
+                                : HCColors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isTranscribing ? 'Live captions' : 'Idle',
+                      style: const TextStyle(
+                        color: HCColors.textTertiary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  isTranscribing ? 'Live captions' : 'Idle',
-                  style: const TextStyle(color: HCColors.textTertiary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5),
-                ),
-              ]),
-              const SizedBox(height: 12),
-              if (!hasContent && !isTranscribing)
-                GestureDetector(
-                  onTap: () => provider.setActiveTab(2),
-                  child: const Text(
-                    'Tap the Transcribe tab to caption a conversation in real time.',
-                    style: TextStyle(fontSize: 13, color: HCColors.textSecondary, height: 1.4),
-                  ),
-                )
-              else if (!hasContent && isTranscribing)
-                const Text(
-                  'Listening — start speaking…',
-                  style: TextStyle(fontSize: 14, color: HCColors.textSecondary, height: 1.5, fontStyle: FontStyle.italic),
-                )
-              else ...[
-                for (final line in lastLines)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      line.text,
-                      style: const TextStyle(fontSize: 14, height: 1.5, color: HCColors.textPrimary),
+                const SizedBox(height: 12),
+                if (!hasContent && !isTranscribing)
+                  GestureDetector(
+                    onTap: () => provider.setActiveTab(2),
+                    child: const Text(
+                      'Tap the Transcribe tab to caption a conversation in real time.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: HCColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  )
+                else if (!hasContent && isTranscribing)
+                  const Text(
+                    'Listening — start speaking…',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: HCColors.textSecondary,
+                      height: 1.5,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
+                else ...[
+                  for (final line in lastLines)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        line.text,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          color: HCColors.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (partial.isNotEmpty)
+                    Text(
+                      partial,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        color: HCColors.accent.withValues(alpha: 0.85),
+                        fontStyle: FontStyle.italic,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                if (partial.isNotEmpty)
-                  Text(
-                    partial,
-                    style: TextStyle(
-                      fontSize: 14, height: 1.5,
-                      color: HCColors.accent.withValues(alpha: 0.85),
-                      fontStyle: FontStyle.italic,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -512,10 +638,16 @@ class _SoundAwarenessCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  gradient: listening ? HCColors.accentGradient : HCColors.primaryGradient,
+                  gradient:
+                      listening
+                          ? HCColors.accentGradient
+                          : HCColors.primaryGradient,
                 ),
                 alignment: Alignment.center,
-                child: Text(listening ? '👂' : '🔈', style: const TextStyle(fontSize: 22)),
+                child: Text(
+                  listening ? '👂' : '🔈',
+                  style: const TextStyle(fontSize: 22),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -523,15 +655,24 @@ class _SoundAwarenessCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      listening ? 'Listening for sounds' : 'Tap Listen to start',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      listening
+                          ? 'Listening for sounds'
+                          : 'Tap Listen to start',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       listening
                           ? 'Detecting alarms, doorbells, sirens, baby cries, and more'
                           : 'Phone uses your mic + on-device AI to flag important sounds',
-                      style: const TextStyle(fontSize: 11, color: HCColors.textSecondary, height: 1.3),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: HCColors.textSecondary,
+                        height: 1.3,
+                      ),
                     ),
                   ],
                 ),
@@ -553,7 +694,9 @@ class _SoundAwarenessCard extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: listening ? HCColors.danger : HCColors.accent,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 elevation: 0,
               ),
               icon: Icon(
@@ -562,7 +705,10 @@ class _SoundAwarenessCard extends StatelessWidget {
               ),
               label: Text(
                 listening ? 'Stop listening' : 'Listen',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -573,16 +719,26 @@ class _SoundAwarenessCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: HCColors.danger.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: HCColors.danger.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: HCColors.danger.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: HCColors.danger, size: 16),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: HCColors.danger,
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       error,
-                      style: const TextStyle(fontSize: 11, color: HCColors.danger, height: 1.3),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: HCColors.danger,
+                        height: 1.3,
+                      ),
                     ),
                   ),
                 ],
@@ -620,34 +776,55 @@ class _ListenerDiagnostic extends StatelessWidget {
               const Text(
                 'WHAT IT HEARS',
                 style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5, color: HCColors.textSecondary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                  color: HCColors.textSecondary,
                 ),
               ),
               const Spacer(),
               Container(
-                width: 6, height: 6,
-                decoration: const BoxDecoration(color: HCColors.success, shape: BoxShape.circle),
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: HCColors.success,
+                  shape: BoxShape.circle,
+                ),
               ),
               const SizedBox(width: 4),
-              const Text('mic live', style: TextStyle(fontSize: 10, color: HCColors.success, fontWeight: FontWeight.w600)),
+              const Text(
+                'mic live',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: HCColors.success,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           // Amplitude bar
-          Stack(children: [
-            Container(
-              height: 6,
-              decoration: BoxDecoration(color: HCColors.bgCard, borderRadius: BorderRadius.circular(3)),
-            ),
-            FractionallySizedBox(
-              widthFactor: ampPct,
-              child: Container(
+          Stack(
+            children: [
+              Container(
                 height: 6,
-                decoration: BoxDecoration(gradient: HCColors.accentGradient, borderRadius: BorderRadius.circular(3)),
+                decoration: BoxDecoration(
+                  color: HCColors.bgCard,
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
-            ),
-          ]),
+              FractionallySizedBox(
+                widthFactor: ampPct,
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    gradient: HCColors.accentGradient,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           if (snap == null)
             const Text(
@@ -691,21 +868,29 @@ class _PredictionRow extends StatelessWidget {
           ),
           Expanded(
             flex: 4,
-            child: Stack(children: [
-              Container(
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                decoration: BoxDecoration(color: HCColors.bgCard, borderRadius: BorderRadius.circular(2)),
-              ),
-              FractionallySizedBox(
-                widthFactor: rank.confidence.clamp(0.0, 1.0),
-                child: Container(
+            child: Stack(
+              children: [
+                Container(
                   height: 4,
                   margin: const EdgeInsets.symmetric(vertical: 4),
-                  decoration: BoxDecoration(color: barColor, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: HCColors.bgCard,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-            ]),
+                FractionallySizedBox(
+                  widthFactor: rank.confidence.clamp(0.0, 1.0),
+                  child: Container(
+                    height: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(
+                      color: barColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 8),
           SizedBox(
@@ -714,7 +899,8 @@ class _PredictionRow extends StatelessWidget {
               '${pct.toStringAsFixed(0)}%',
               textAlign: TextAlign.right,
               style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w700,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
                 color: isMapped ? HCColors.accent : HCColors.textTertiary,
               ),
             ),
@@ -738,9 +924,19 @@ class _SceneChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: isActive ? HCColors.glassHighlight : HCColors.glassBg,
         borderRadius: BorderRadius.circular(12),
-        border: isActive ? Border.all(color: HCColors.textPrimary.withValues(alpha: 0.5)) : null,
+        border:
+            isActive
+                ? Border.all(color: HCColors.textPrimary.withValues(alpha: 0.5))
+                : null,
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, color: isActive ? HCColors.textPrimary : HCColors.textSecondary, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          color: isActive ? HCColors.textPrimary : HCColors.textSecondary,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
     );
   }
 }
